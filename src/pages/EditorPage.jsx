@@ -155,17 +155,20 @@ const EditorPage = () => {
     };
 
     const handleSave = async () => {
-        if (!user) return;
+        if (!user || !editor) return;
         setSaveStatus('saving');
+
+        const type = searchParams.get('type') || 'story';
 
         try {
             const storyData = {
-                title,
+                title: title || 'Untitled',
+                type: type,
                 chapters: chapters.map((ch, i) =>
                     i === activeChapterIndex ? { ...ch, content: editor.getHTML() } : ch
                 ),
                 authorId: user.uid,
-                authorName: user.name,
+                authorName: user.name || 'Anonymous',
                 updatedAt: serverTimestamp(),
                 status: 'draft'
             };
@@ -177,28 +180,32 @@ const EditorPage = () => {
                     ...storyData,
                     createdAt: serverTimestamp()
                 });
-                navigate(`/write?id=${docRef.id}`, { replace: true });
+                navigate(`/write?id=${docRef.id}&type=${type}`, { replace: true });
             }
             setSaveStatus('saved');
             setTimeout(() => setSaveStatus('idle'), 2000);
         } catch (error) {
-            console.error("Save failed:", error);
+            console.error("Save failed dramatically:", error);
+            alert("Save failed. Check browser console for details.");
             setSaveStatus('idle');
         }
     };
 
     const handlePublish = async () => {
-        if (!user) return;
+        if (!user || !editor) return;
         setIsPublishing(true);
+
+        const type = searchParams.get('type') || 'story';
 
         try {
             const storyData = {
-                title,
+                title: title || 'Untitled',
+                type: type,
                 chapters: chapters.map((ch, i) =>
                     i === activeChapterIndex ? { ...ch, content: editor.getHTML() } : ch
                 ),
                 authorId: user.uid,
-                authorName: user.name,
+                authorName: user.name || 'Anonymous',
                 updatedAt: serverTimestamp(),
                 status: 'published',
                 excerpt: editor.getText().substring(0, 150) + '...'
@@ -214,7 +221,8 @@ const EditorPage = () => {
             }
             navigate('/read');
         } catch (error) {
-            console.error("Publish failed:", error);
+            console.error("Publish failed dramatically:", error);
+            alert("Publish failed. See console.");
         } finally {
             setIsPublishing(false);
         }
