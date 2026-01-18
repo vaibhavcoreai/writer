@@ -8,7 +8,6 @@ import {
     query,
     where,
     getDocs,
-    getDoc,
     limit,
     orderBy,
     doc,
@@ -17,9 +16,10 @@ import {
 } from 'firebase/firestore';
 
 const ProfilePage = () => {
-    const { user: currentUser, logout, loading } = useAuth();
+    const { user: currentUser, loading: authLoading } = useAuth();
     const { handle: urlHandle } = useParams();
     const navigate = useNavigate();
+
     const [profileUser, setProfileUser] = useState(null);
     const [isPublicView, setIsPublicView] = useState(false);
     const [loaded, setLoaded] = useState(false);
@@ -32,18 +32,22 @@ const ProfilePage = () => {
     ]);
     const [isFetching, setIsFetching] = useState(true);
 
-    const isOwnProfile = !urlHandle || (currentUser && currentUser.email?.split('@')[0] === urlHandle);
-    const currentHandle = profileUser?.handle || urlHandle || 'writer';
+    // Better handle detection
+    const isOwnProfile = !urlHandle || (currentUser && currentUser.handle === urlHandle);
+    const currentHandle = urlHandle || currentUser?.handle || 'writer';
     const profileUrl = `${window.location.origin}/@${currentHandle}`;
 
     useEffect(() => {
         const fetchUserData = async () => {
+            if (authLoading) return;
+
             try {
                 let targetUid = null;
                 let targetUser = null;
 
+                // 1. Determine who we are looking for
                 if (urlHandle) {
-                    // Try to find user by handle in 'users' collection
+                    // Search users collection by handle
                     const usersRef = collection(db, "users");
                     const qUser = query(usersRef, where("handle", "==", urlHandle), limit(1));
                     const userSnap = await getDocs(qUser);
@@ -51,131 +55,93 @@ const ProfilePage = () => {
                     if (!userSnap.empty) {
                         targetUser = userSnap.docs[0].data();
                         targetUid = userSnap.docs[0].id;
-                        setIsPublicView(targetUid !== currentUser?.uid);
                     } else {
-                        setIsPublicView(true);
-                        // Fallback: search stories where authorHandle or authorEmail matches
+                        // Fallback: search stories for this handle prefix in email or explicit handle
                         const storiesRef = collection(db, "stories");
-                        const qHandle = query(storiesRef, where("authorHandle", "==", urlHandle), limit(20));
-                        const handleSnap = await getDocs(qHandle);
+                        const qStoriesSync = query(storiesRef, where("authorHandle", "==", urlHandle), limit(1));
+                        const syncSnap = await getDocs(qStoriesSync);
 
-                        if (!handleSnap.empty) {
-                            const firstMatch = handleSnap.docs[0].data();
-                            targetUid = firstMatch.authorId;
+                        if (!syncSnap.empty) {
+                            const data = syncSnap.docs[0].data();
+                            targetUid = data.authorId;
                             targetUser = {
                                 uid: targetUid,
-                                name: firstMatch.authorName,
-                                avatarUrl: firstMatch.authorAvatar || `https://ui-avatars.com/api/?name=${firstMatch.authorName}&background=2C2C2C&color=F9F8F4`
+                                name: data.authorName,
+                                avatarUrl: data.authorAvatar,
+                                handle: urlHandle
                             };
                         } else {
-                            // Deep Fallback: Scan recent published stories (generic scan)
-                            const qRecent = query(storiesRef, where("status", "==", "published"), limit(100));
-                            const recentSnap = await getDocs(qRecent);
-                            const found = recentSnap.docs.find(d => d.data().authorEmail?.split('@')[0] === urlHandle);
+                            // Deepest Fallback: Scan published stories and match prefix manually
+                            const qAll = query(storiesRef, where("status", "==", "published"), limit(50));
+                            const allSnap = await getDocs(qAll);
+                            const found = allSnap.docs.find(d => d.data().authorEmail?.split('@')[0] === urlHandle);
                             if (found) {
                                 const data = found.data();
                                 targetUid = data.authorId;
                                 targetUser = {
                                     uid: targetUid,
                                     name: data.authorName,
-                                    avatarUrl: data.authorAvatar || `https://ui-avatars.com/api/?name=${data.authorName}&background=2C2C2C&color=F9F8F4`
+                                    avatarUrl: data.authorAvatar,
+                                    handle: urlHandle
                                 };
                             }
                         }
                     }
+                    setIsPublicView(targetUid !== currentUser?.uid);
                 } else if (currentUser) {
                     targetUid = currentUser.uid;
                     targetUser = currentUser;
                     setIsPublicView(false);
                 } else {
+                    // Not logged in and no handle, go to login
                     navigate('/login');
                     return;
                 }
 
+                // 2. Fetch writings for this user
                 if (targetUid) {
-                    const storiesRef = collection(db, "stories");
-                    // Query for stories
-                    const qStories = query(
-                        storiesRef,
+                    setProfileUser(targetUser);
+                    const writingsRef = collection(db, "stories");
+                    const qWritings = query(
+                        writingsRef,
                         where("authorId", "==", targetUid),
                         orderBy("updatedAt", "desc")
                     );
-
-                    const snap = await getDocs(qStories);
-                    const allWritings = snap.docs.map(doc => ({
+                    const writingsSnap = await getDocs(qWritings);
+                    const allWritings = writingsSnap.docs.map(doc => ({
                         id: doc.id,
                         ...doc.data(),
                         date: doc.data().updatedAt?.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) || 'Just now'
                     }));
 
-                    setProfileUser(targetUser);
+                    const filtered = (targetUid === currentUser?.uid) ? allWritings : allWritings.filter(w => w.status === 'published');
+                    setUserWritings(filtered);
 
-                    const filteredWritings = isOwnProfile ? allWritings : allWritings.filter(w => w.status === 'published');
-                    setUserWritings(filteredWritings);
-
-                    // Calculate stats
-                    const storiesCount = filteredWritings.filter(w => (w.type?.toLowerCase() === 'story' || !w.type) && w.status === 'published').length;
-                    const poemsCount = filteredWritings.filter(w => w.type?.toLowerCase() === 'poem' && w.status === 'published').length;
-
-                    const newStats = [
+                    // 3. Stats
+                    const storiesCount = filtered.filter(w => (w.type?.toLowerCase() === 'story' || !w.type) && w.status === 'published').length;
+                    const poemsCount = filtered.filter(w => w.type?.toLowerCase() === 'poem' && w.status === 'published').length;
+                    const statsArr = [
                         { label: 'Stories', value: storiesCount },
                         { label: 'Poems', value: poemsCount }
                     ];
-
-                    if (isOwnProfile) {
-                        const draftsCount = allWritings.filter(w => w.status === 'draft').length;
-                        newStats.push({ label: 'Drafts', value: draftsCount });
+                    if (targetUid === currentUser?.uid) {
+                        statsArr.push({ label: 'Drafts', value: allWritings.filter(w => w.status === 'draft').length });
                     }
-                    setStats(newStats);
+                    setStats(statsArr);
                 } else {
-                    setProfileUser(null);
+                    setIsFetching(false);
                 }
 
             } catch (error) {
-                console.error("Error fetching profile:", error);
+                console.error("Error loading profile:", error);
             } finally {
                 setIsFetching(false);
                 setLoaded(true);
             }
         };
 
-        if (!loading) {
-            fetchUserData();
-        }
-    }, [currentUser, loading, urlHandle, navigate, isOwnProfile]);
-
-    const moveToDraft = async (e, writingId) => {
-        e.stopPropagation();
-        if (!window.confirm("Move this back to drafts? It will be hidden from the public feed.")) return;
-
-        try {
-            const docRef = doc(db, "stories", writingId);
-            await updateDoc(docRef, {
-                status: 'draft',
-                updatedAt: serverTimestamp()
-            });
-
-            setUserWritings(prev => prev.map(w =>
-                w.id === writingId ? { ...w, status: 'draft' } : w
-            ));
-
-            // Refresh stats locally
-            const updated = userWritings.map(w => w.id === writingId ? { ...w, status: 'draft' } : w);
-            const storiesCount = updated.filter(w => (w.type?.toLowerCase() === 'story' || !w.type) && w.status === 'published').length;
-            const poemsCount = updated.filter(w => w.type?.toLowerCase() === 'poem' && w.status === 'published').length;
-            const draftsCount = updated.filter(w => w.status === 'draft').length;
-
-            setStats([
-                { label: 'Stories', value: storiesCount },
-                { label: 'Poems', value: poemsCount },
-                { label: 'Drafts', value: draftsCount },
-            ]);
-
-        } catch (error) {
-            console.error("Error moving to draft:", error);
-            alert("Failed to move to draft.");
-        }
-    };
+        fetchUserData();
+    }, [urlHandle, currentUser, authLoading, navigate]);
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(profileUrl);
@@ -183,9 +149,9 @@ const ProfilePage = () => {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const displayUser = isOwnProfile ? currentUser : profileUser;
+    const displayUser = isPublicView ? profileUser : (currentUser || profileUser);
 
-    if (isFetching && !displayUser) {
+    if (isFetching) {
         return (
             <div className="min-h-screen bg-paper flex items-center justify-center">
                 <div className="w-8 h-8 border-2 border-ink-lighter border-t-transparent rounded-full animate-spin"></div>
@@ -196,7 +162,8 @@ const ProfilePage = () => {
     if (!displayUser && !isFetching) {
         return (
             <div className="min-h-screen bg-paper flex flex-col items-center justify-center text-center px-6">
-                <h1 className="text-2xl font-serif font-bold mb-4">Writer not found.</h1>
+                <NavBar loaded={true} />
+                <h1 className="text-2xl font-serif font-bold mb-4">Writer Not Found</h1>
                 <p className="text-ink-light mb-8 italic">This storyteller hasn't arrived yet.</p>
                 <Link to="/" className="px-6 py-2 bg-ink text-paper rounded-full text-xs font-bold uppercase tracking-widest">Return Home</Link>
             </div>
@@ -215,11 +182,11 @@ const ProfilePage = () => {
                                 <img src={displayUser.avatarUrl} alt={displayUser.name} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="text-4xl font-serif italic text-ink/40">
-                                    {displayUser?.name?.[0]?.toUpperCase()}
+                                    {(displayUser?.name?.[0] || displayUser?.displayName?.[0] || 'W').toUpperCase()}
                                 </div>
                             )}
                         </div>
-                        {isOwnProfile && (
+                        {!isPublicView && (
                             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-ink text-paper text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-widest shadow-lg">
                                 Pro Writer
                             </div>
@@ -227,7 +194,7 @@ const ProfilePage = () => {
                     </div>
 
                     <h1 className="text-4xl font-serif font-bold mb-2 tracking-tight">
-                        {displayUser?.name}
+                        {displayUser?.name || displayUser?.displayName || 'Writer'}
                     </h1>
 
                     <button
@@ -248,7 +215,7 @@ const ProfilePage = () => {
                         Observing the world through ink and silence. storyteller, dreamer, and explorer of quiet pages.
                     </p>
 
-                    {isOwnProfile && (
+                    {!isPublicView && (
                         <div className="flex gap-4 mb-12">
                             <button
                                 onClick={copyToClipboard}
@@ -259,7 +226,6 @@ const ProfilePage = () => {
                         </div>
                     )}
 
-                    {/* Stats */}
                     <div className="flex gap-12 items-center">
                         {stats.map((stat, i) => (
                             <div key={i} className="flex flex-col">
@@ -272,19 +238,15 @@ const ProfilePage = () => {
 
                 <section className="space-y-8">
                     <div className={`flex items-center justify-between mb-8 ${loaded ? 'animate-reveal stagger-1' : 'opacity-0'}`}>
-                        <h2 className="text-xs uppercase tracking-[0.3em] font-bold text-ink-lighter">{isOwnProfile ? 'Your Library' : 'Writings'}</h2>
-                        {isOwnProfile && (
+                        <h2 className="text-xs uppercase tracking-[0.3em] font-bold text-ink-lighter">{!isPublicView ? 'Your Library' : 'Writings'}</h2>
+                        {!isPublicView && (
                             <Link to="/write" className="text-xs uppercase tracking-[0.2em] font-bold text-ink-light hover:text-ink transition-colors border-b border-ink/10 pb-1">
                                 New Story
                             </Link>
                         )}
                     </div>
 
-                    {isFetching ? (
-                        <div className="flex justify-center py-20">
-                            <div className="w-6 h-6 border-2 border-ink-lighter border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                    ) : userWritings.length > 0 ? (
+                    {userWritings.length > 0 ? (
                         <div className="grid grid-cols-1 gap-4">
                             {userWritings.map((writing, index) => (
                                 <div
@@ -309,23 +271,14 @@ const ProfilePage = () => {
                                         <span className="text-xs text-ink-lighter uppercase tracking-widest font-bold">{writing.type || 'Story'}</span>
                                     </div>
 
-                                    <div className="flex items-center gap-4 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-4">
                                         <button
-                                            onClick={() => navigate(writing.status === 'published' ? `/read/${writing.id}` : `/write?id=${writing.id}`)}
+                                            onClick={() => navigate(`/read/${writing.id}`)}
                                             className="p-3 rounded-full hover:bg-black/5 text-ink-light"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
                                         </button>
-                                        {isOwnProfile && writing.status === 'published' && (
-                                            <button
-                                                onClick={(e) => moveToDraft(e, writing.id)}
-                                                className="p-3 rounded-full hover:bg-black/5 text-ink-light"
-                                                title="Move to Draft"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v8" /><path d="m16 6-4 4-4-4" /><rect width="20" height="8" x="2" y="14" rx="2" /></svg>
-                                            </button>
-                                        )}
-                                        {isOwnProfile && (
+                                        {!isPublicView && (
                                             <button
                                                 onClick={() => navigate(`/write?id=${writing.id}`)}
                                                 className="p-3 rounded-full hover:bg-black/5 text-ink-light"
@@ -339,32 +292,10 @@ const ProfilePage = () => {
                         </div>
                     ) : (
                         <div className="text-center py-20 border border-dashed border-ink-lighter/10 rounded-2xl">
-                            <p className="text-ink-lighter font-serif italic mb-6">Your library is waiting for its first book.</p>
-                            {isOwnProfile && (
-                                <Link to="/choose-type" className="px-6 py-2 bg-ink text-paper rounded-full text-[10px] uppercase tracking-widest font-bold">Start Writing</Link>
-                            )}
+                            <p className="text-ink-lighter font-serif italic mb-6">No stories published yet.</p>
                         </div>
                     )}
                 </section>
-
-                <footer className={`mt-32 pt-16 border-t border-ink-lighter/10 text-center ${loaded ? 'animate-reveal stagger-3' : 'opacity-0'}`}>
-                    <div className="flex flex-col items-center gap-6">
-                        {isOwnProfile && (
-                            <button
-                                onClick={() => {
-                                    logout();
-                                    navigate('/');
-                                }}
-                                className="text-xs uppercase tracking-[0.3em] font-bold text-ink-lighter hover:text-red-400 transition-colors"
-                            >
-                                Sign out
-                            </button>
-                        )}
-                        <p className="text-[10px] text-ink-lighter/60 uppercase tracking-widest">
-                            Built with passion by <a href="https://vaibhavmanaji.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-ink transition-colors border-b border-ink-lighter/20">Vaibhav Manaji</a>
-                        </p>
-                    </div>
-                </footer>
             </main>
         </div>
     );

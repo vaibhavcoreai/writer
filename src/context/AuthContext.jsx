@@ -25,7 +25,8 @@ export const AuthProvider = ({ children }) => {
                     uid: firebaseUser.uid,
                     name: firebaseUser.displayName || 'Writer',
                     email: firebaseUser.email,
-                    avatarUrl: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${firebaseUser.displayName || 'Writer'}&background=2C2C2C&color=F9F8F4&font-size=0.4`
+                    avatarUrl: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${firebaseUser.displayName || 'Writer'}&background=2C2C2C&color=F9F8F4&font-size=0.4`,
+                    handle: firebaseUser.email?.split('@')[0] || 'writer'
                 };
                 setUser(mappedUser);
                 localStorage.setItem('writer_user', JSON.stringify(mappedUser));
@@ -36,7 +37,6 @@ export const AuthProvider = ({ children }) => {
                         await setDoc(doc(db, "users", firebaseUser.uid), {
                             ...mappedUser,
                             lastLogin: serverTimestamp(),
-                            handle: firebaseUser.email?.split('@')[0] || 'writer'
                         }, { merge: true });
                     } catch (e) {
                         console.error("Error syncing user:", e);
