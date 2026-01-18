@@ -238,16 +238,16 @@ const EditorPage = () => {
                 <NavBar />
             </div>
 
-            <main className="pt-24 md:pt-32 pb-20 px-4 md:px-8 flex justify-center">
+            <main className="pt-20 md:pt-32 pb-40 px-3 md:px-8 flex justify-center">
                 <div
-                    className={`max-w-3xl w-full min-h-[80vh] bg-paper shadow-xl rounded-sm p-8 md:p-16 border border-white/40 transition-all duration-700 relative cursor-text ${isDistractionFree ? 'shadow-2xl scale-[1.01]' : 'shadow-xl'}`}
+                    className={`max-w-3xl w-full min-h-[85vh] bg-paper shadow-xl rounded-sm p-6 md:p-16 border border-white/40 transition-all duration-700 relative cursor-text ${isDistractionFree ? 'shadow-2xl scale-[1.01]' : 'shadow-xl'}`}
                 >
                     {/* Controls */}
-                    <div className={`absolute top-6 right-6 flex items-center gap-3 transition-opacity duration-700 ${isDistractionFree ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
+                    <div className={`flex items-center justify-between mb-8 md:absolute md:top-6 md:right-6 md:mb-0 gap-3 transition-opacity duration-700 ${isDistractionFree ? 'opacity-0 md:hover:opacity-100' : 'opacity-100'}`}>
                         <button
                             onClick={handleSave}
                             disabled={saveStatus === 'saving'}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest font-bold text-ink-lighter hover:text-ink hover:bg-black/5 transition-all"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest font-bold text-ink-light hover:text-ink hover:bg-black/5 transition-all bg-paper/50 border border-ink-lighter/5"
                         >
                             {saveStatus === 'saving' ? (
                                 <div className="w-3 h-3 border-2 border-ink-lighter border-t-transparent rounded-full animate-spin"></div>
@@ -295,10 +295,10 @@ const EditorPage = () => {
 
                             <button
                                 onClick={() => setShowChapters(!showChapters)}
-                                className={`flex items-center gap-2 px-3 py-1 rounded-full border border-ink-lighter/10 text-[10px] uppercase tracking-widest font-bold text-ink-lighter transition-all ${isDistractionFree ? 'opacity-0' : 'opacity-100'}`}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-ink-lighter/10 text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-ink-lighter transition-all ${isDistractionFree ? 'opacity-0' : 'opacity-100'}`}
                             >
-                                <span>{activeChapter.title}</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+                                <span className="max-w-[80px] truncate">{activeChapter.title}</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
                             </button>
 
                             {showChapters && (
