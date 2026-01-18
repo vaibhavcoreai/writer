@@ -14,6 +14,11 @@ const ReadPage = () => {
     const [loaded, setLoaded] = useState(false);
 
     const unpublishStory = async () => {
+        if (!user || user.uid !== story.authorId) {
+            alert("You are not authorized to unpublish this story.");
+            return;
+        }
+
         if (!window.confirm("Move this back to drafts? It will no longer be visible in the public library.")) return;
 
         try {
