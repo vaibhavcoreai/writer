@@ -66,9 +66,9 @@ function LandingPage() {
       </main>
 
       {/* Footer / Copyright */}
-      <footer className={`absolute bottom-6 w-full text-center text-xs text-ink-lighter/60 transition-all duration-1000 delay-1000 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
+      <footer className={`absolute bottom-6 w-full text-center text-xs text-ink-lighter/60 transition-all duration-1000 delay-1000 z-20 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
         <p className="mb-1">© 2026 Writer Inc.</p>
-        <p>Crafted by <a href="https://vaibhavmanaji.vercel.app" target="_blank" rel="noopener noreferrer" className="text-ink-lighter hover:text-ink transition-colors border-b border-ink-lighter/20 hover:border-ink/40">Vaibhav Manaji</a></p>
+        <p>Crafted by <a href="https://vaibhavmanaji.vercel.app" target="_blank" rel="noopener noreferrer" className="text-ink-lighter hover:text-ink transition-colors border-b border-ink-lighter/20 hover:border-ink/40 pointer-events-auto cursor-pointer">Vaibhav Manaji</a></p>
       </footer>
 
     </div>
