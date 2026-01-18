@@ -173,7 +173,8 @@ const EditorPage = () => {
                 authorHandle: user.email?.split('@')[0],
                 authorAvatar: user.avatarUrl,
                 updatedAt: serverTimestamp(),
-                status: 'draft'
+                status: 'draft',
+                ...(docId ? {} : { likes: [], likesCount: 0 })
             };
 
             if (docId) {
@@ -214,7 +215,8 @@ const EditorPage = () => {
                 authorAvatar: user.avatarUrl,
                 updatedAt: serverTimestamp(),
                 status: 'published',
-                excerpt: editor.getText().substring(0, 150) + '...'
+                excerpt: editor.getText().substring(0, 150) + '...',
+                ...(docId ? {} : { likes: [], likesCount: 0 })
             };
 
             if (docId) {

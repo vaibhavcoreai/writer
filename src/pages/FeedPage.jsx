@@ -16,6 +16,7 @@ const FeedPage = () => {
     const [activeTab, setActiveTab] = useState('All');
     const [publicFeed, setPublicFeed] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         const fetchFeed = async () => {
@@ -46,9 +47,12 @@ const FeedPage = () => {
         fetchFeed();
     }, []);
 
-    const filteredFeed = activeTab === 'All'
-        ? publicFeed
-        : publicFeed.filter(item => item.type?.toLowerCase() === activeTab.toLowerCase());
+    const filteredFeed = publicFeed.filter(post => {
+        const matchesTab = activeTab === 'All' || post.type?.toLowerCase() === activeTab.toLowerCase();
+        const matchesSearch = post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            post.authorName?.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesTab && matchesSearch;
+    });
 
     return (
         <div className="min-h-screen bg-paper text-ink selection:bg-ink-light selection:text-paper overflow-hidden relative font-sans">
@@ -70,21 +74,34 @@ const FeedPage = () => {
                         </div>
                     </div>
 
-                    {/* Tabs / Filters */}
-                    <div className="flex flex-wrap gap-4 pt-4">
-                        {['All', 'Story', 'Poem', 'Blog'].map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-2 rounded-full text-[10px] uppercase tracking-widest font-bold transition-all
-                                    ${activeTab === tab
-                                        ? 'bg-ink text-paper shadow-soft'
-                                        : 'bg-paper-dark text-ink-lighter hover:text-ink hover:bg-white'}
-                                `}
-                            >
-                                {tab}
-                            </button>
-                        ))}
+                    {/* Search and Tabs */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-4">
+                        <div className="flex flex-wrap gap-3">
+                            {['All', 'Story', 'Poem', 'Blog'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`px-5 py-2 rounded-full text-[9px] md:text-[10px] uppercase tracking-widest font-bold transition-all
+                                        ${activeTab === tab
+                                            ? 'bg-ink text-paper shadow-soft'
+                                            : 'bg-paper-dark text-ink-lighter hover:text-ink hover:bg-white'}
+                                    `}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="relative max-w-sm w-full">
+                            <input
+                                type="text"
+                                placeholder="Search stories or authors..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-paper-dark/50 border border-ink-lighter/10 rounded-full px-6 py-3 text-sm focus:outline-none focus:border-ink/20 transition-all font-serif italic"
+                            />
+                            <svg className="absolute right-5 top-1/2 -translate-y-1/2 text-ink-lighter" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </div>
                     </div>
                 </header>
 
@@ -125,7 +142,13 @@ const FeedPage = () => {
                                         </div>
                                         <span className="text-xs font-bold uppercase tracking-widest text-ink/70">{post.authorName}</span>
                                     </div>
-                                    <span className="text-[10px] font-bold text-ink-lighter uppercase tracking-widest">{post.date}</span>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-1.5 text-ink-lighter">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+                                            <span className="text-[10px] font-bold">{post.likesCount || 0}</span>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-ink-lighter uppercase tracking-widest">{post.date}</span>
+                                    </div>
                                 </div>
                             </Link>
                         ))}

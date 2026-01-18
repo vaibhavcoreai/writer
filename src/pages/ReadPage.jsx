@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 const ReadPage = () => {
     const { id } = useParams();
@@ -26,6 +26,37 @@ const ReadPage = () => {
         } catch (error) {
             console.error("Error unpublishing:", error);
             alert("Failed to move to drafts.");
+        }
+    };
+
+    const toggleLike = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+
+        const isLiked = story.likes?.includes(user.uid);
+        const docRef = doc(db, "stories", id);
+
+        try {
+            // Optimistic update
+            setStory(prev => ({
+                ...prev,
+                likes: isLiked
+                    ? (prev.likes || []).filter(uid => uid !== user.uid)
+                    : [...(prev.likes || []), user.uid],
+                likesCount: isLiked ? (prev.likesCount || 1) - 1 : (prev.likesCount || 0) + 1
+            }));
+
+            await updateDoc(docRef, {
+                likes: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
+                likesCount: isLiked ? (story.likesCount || 1) - 1 : (story.likesCount || 0) + 1
+            });
+        } catch (error) {
+            console.error("Error toggling like:", error);
+            // Revert on error
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) setStory(docSnap.data());
         }
     };
 
@@ -125,6 +156,35 @@ const ReadPage = () => {
 
                     {/* Footer */}
                     <footer className="mt-32 pt-16 border-t border-ink-lighter/10 flex flex-col items-center">
+                        {/* Like Button */}
+                        <div className="flex flex-col items-center gap-4 mb-20">
+                            <button
+                                onClick={toggleLike}
+                                className={`group flex flex-col items-center justify-center p-6 rounded-full transition-all duration-500 hover:scale-110 active:scale-90
+                                    ${story.likes?.includes(user?.uid)
+                                        ? 'bg-ink text-paper shadow-2xl'
+                                        : 'bg-paper-dark/50 text-ink hover:bg-white border border-ink/5'}
+                                `}
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="28"
+                                    height="28"
+                                    viewBox="0 0 24 24"
+                                    fill={story.likes?.includes(user?.uid) ? "currentColor" : "none"}
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="transition-all group-hover:rotate-12"
+                                >
+                                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                                </svg>
+                                <span className="mt-2 text-xs font-bold uppercase tracking-widest">{story.likesCount || 0}</span>
+                            </button>
+                            <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-ink-lighter">{story.likes?.includes(user?.uid) ? "Grateful for your heart" : "Give this story a heart"}</span>
+                        </div>
+
                         <div className="text-center mb-12">
                             <p className="text-ink-light font-serif italic text-lg mb-8 max-w-md mx-auto leading-relaxed">
                                 "Every story is a child of the heart, birthed through the ink of our experiences."
