@@ -170,6 +170,7 @@ const EditorPage = () => {
                 authorId: user.uid,
                 authorName: user.name || 'Anonymous',
                 authorEmail: user.email,
+                authorHandle: user.email?.split('@')[0],
                 authorAvatar: user.avatarUrl,
                 updatedAt: serverTimestamp(),
                 status: 'draft'
@@ -209,6 +210,7 @@ const EditorPage = () => {
                 authorId: user.uid,
                 authorName: user.name || 'Anonymous',
                 authorEmail: user.email,
+                authorHandle: user.email?.split('@')[0],
                 authorAvatar: user.avatarUrl,
                 updatedAt: serverTimestamp(),
                 status: 'published',

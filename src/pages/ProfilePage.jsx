@@ -53,23 +53,34 @@ const ProfilePage = () => {
                         targetUid = userSnap.docs[0].id;
                         setIsPublicView(targetUid !== currentUser?.uid);
                     } else {
-                        // Fallback: search stories for the handle if user doc doesn't exist yet
+                        setIsPublicView(true);
+                        // Fallback: search stories where authorHandle or authorEmail matches
                         const storiesRef = collection(db, "stories");
-                        const qAuthor = query(storiesRef, where("status", "==", "published"), limit(50));
-                        const qSnap = await getDocs(qAuthor);
-                        const authorPosts = qSnap.docs.map(d => d.data()).filter(d =>
-                            d.authorEmail?.split('@')[0] === urlHandle ||
-                            d.authorName?.toLowerCase().replace(/\s/g, '') === urlHandle.toLowerCase()
-                        );
+                        const qHandle = query(storiesRef, where("authorHandle", "==", urlHandle), limit(20));
+                        const handleSnap = await getDocs(qHandle);
 
-                        if (authorPosts.length > 0) {
-                            targetUid = authorPosts[0].authorId;
+                        if (!handleSnap.empty) {
+                            const firstMatch = handleSnap.docs[0].data();
+                            targetUid = firstMatch.authorId;
                             targetUser = {
                                 uid: targetUid,
-                                name: authorPosts[0].authorName,
-                                avatarUrl: authorPosts[0].authorAvatar || `https://ui-avatars.com/api/?name=${authorPosts[0].authorName}&background=2C2C2C&color=F9F8F4`
+                                name: firstMatch.authorName,
+                                avatarUrl: firstMatch.authorAvatar || `https://ui-avatars.com/api/?name=${firstMatch.authorName}&background=2C2C2C&color=F9F8F4`
                             };
-                            setIsPublicView(true);
+                        } else {
+                            // Deep Fallback: Scan recent published stories (generic scan)
+                            const qRecent = query(storiesRef, where("status", "==", "published"), limit(100));
+                            const recentSnap = await getDocs(qRecent);
+                            const found = recentSnap.docs.find(d => d.data().authorEmail?.split('@')[0] === urlHandle);
+                            if (found) {
+                                const data = found.data();
+                                targetUid = data.authorId;
+                                targetUser = {
+                                    uid: targetUid,
+                                    name: data.authorName,
+                                    avatarUrl: data.authorAvatar || `https://ui-avatars.com/api/?name=${data.authorName}&background=2C2C2C&color=F9F8F4`
+                                };
+                            }
                         }
                     }
                 } else if (currentUser) {
