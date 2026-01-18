@@ -52,9 +52,14 @@ const ProfilePage = () => {
                         targetUser = userSnap.docs[0].data();
                         targetUid = userSnap.docs[0].id;
                     } else {
-                        // Fallback: search stories for authorHandle
+                        // Fallback: search stories for authorHandle (limit to published for guest safety)
                         const storiesRef = collection(db, "stories");
-                        const qStoriesSync = query(storiesRef, where("authorHandle", "==", urlHandle), limit(1));
+                        const qStoriesSync = query(
+                            storiesRef,
+                            where("status", "==", "published"),
+                            where("authorHandle", "==", urlHandle),
+                            limit(1)
+                        );
                         const syncSnap = await getDocs(qStoriesSync);
 
                         if (!syncSnap.empty) {
@@ -67,7 +72,7 @@ const ProfilePage = () => {
                                 handle: urlHandle
                             };
                         } else {
-                            // Deep Fallback: Email prefix match
+                            // Deep Fallback: Email prefix match (limit to published for guest safety)
                             const qAll = query(storiesRef, where("status", "==", "published"), limit(100));
                             const allSnap = await getDocs(qAll);
                             const found = allSnap.docs.find(d => d.data().authorEmail?.split('@')[0] === urlHandle);
@@ -95,10 +100,14 @@ const ProfilePage = () => {
                 if (targetUid) {
                     setProfileUser(targetUser);
                     const writingsRef = collection(db, "stories");
-                    const qWritings = query(
-                        writingsRef,
-                        where("authorId", "==", targetUid)
-                    );
+
+                    // Guest/Other must only query 'published' to pass security rules
+                    // Owner can query everything
+                    const isOwner = targetUid === currentUser?.uid;
+                    const qWritings = isOwner
+                        ? query(writingsRef, where("authorId", "==", targetUid))
+                        : query(writingsRef, where("authorId", "==", targetUid), where("status", "==", "published"));
+
                     const writingsSnap = await getDocs(qWritings);
                     let allWritings = writingsSnap.docs.map(doc => {
                         const data = doc.data();
@@ -118,7 +127,7 @@ const ProfilePage = () => {
                         return timeB - timeA;
                     });
 
-                    const viewWritings = (targetUid === currentUser?.uid) ? allWritings : allWritings.filter(w => w.status === 'published');
+                    const viewWritings = isOwner ? allWritings : allWritings.filter(w => w.status === 'published');
                     setUserWritings(viewWritings);
 
                     // Stats logic
@@ -131,7 +140,7 @@ const ProfilePage = () => {
                         { label: 'Hearts', value: hearts }
                     ];
 
-                    if (targetUid === currentUser?.uid) {
+                    if (isOwner) {
                         statsSet.push({ label: 'Drafts', value: allWritings.filter(w => w.status === 'draft').length });
                     }
                     setStats(statsSet);
