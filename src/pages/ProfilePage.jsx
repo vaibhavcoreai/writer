@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +8,8 @@ import {
     query,
     where,
     getDocs,
+    getDoc,
+    limit,
     orderBy,
     doc,
     updateDoc,
@@ -30,7 +33,7 @@ const ProfilePage = () => {
     const [isFetching, setIsFetching] = useState(true);
 
     const isOwnProfile = !urlHandle || (currentUser && currentUser.email?.split('@')[0] === urlHandle);
-    const currentHandle = profileUser?.email?.split('@')[0] || urlHandle || 'writer';
+    const currentHandle = profileUser?.handle || urlHandle || 'writer';
     const profileUrl = `${window.location.origin}/@${currentHandle}`;
 
     useEffect(() => {
@@ -40,102 +43,82 @@ const ProfilePage = () => {
                 let targetUser = null;
 
                 if (urlHandle) {
-                    // Public view or handle-based view
-                    // In a real app, you'd have a users collection. 
-                    // For now, we'll infer from the stories if they exist, 
-                    // or use the current user if it matches.
-                    if (currentUser && currentUser.email?.split('@')[0] === urlHandle) {
-                        targetUid = currentUser.uid;
-                        targetUser = currentUser;
-                        setIsPublicView(false);
+                    // Try to find user by handle in 'users' collection
+                    const usersRef = collection(db, "users");
+                    const qUser = query(usersRef, where("handle", "==", urlHandle), limit(1));
+                    const userSnap = await getDocs(qUser);
+
+                    if (!userSnap.empty) {
+                        targetUser = userSnap.docs[0].data();
+                        targetUid = userSnap.docs[0].id;
+                        setIsPublicView(targetUid !== currentUser?.uid);
                     } else {
-                        setIsPublicView(true);
-                        // We need to find the authorId for this handle
-                        // Hack: search for a story with an author whose email starts with handle
-                        // BETTER: search stories for any post by this handle.
-                        // For simplicity in this demo, we'll assume the handle is unique and searchable.
+                        // Fallback: search stories for the handle if user doc doesn't exist yet
                         const storiesRef = collection(db, "stories");
-                        const qAuthor = query(storiesRef, where("status", "==", "published"), limit(1));
+                        const qAuthor = query(storiesRef, where("status", "==", "published"), limit(50));
                         const qSnap = await getDocs(qAuthor);
+                        const authorPosts = qSnap.docs.map(d => d.data()).filter(d =>
+                            d.authorEmail?.split('@')[0] === urlHandle ||
+                            d.authorName?.toLowerCase().replace(/\s/g, '') === urlHandle.toLowerCase()
+                        );
 
-                        // Because firestore doesn't support searching by email prefix easily without a users collection,
-                        // we'll find at least one story by this author.
-                        // If no story exists, we can't show much without a users collection.
-
-                        // REFINED: Since we don't have a users collection yet, we fetch stories where visibility is public.
+                        if (authorPosts.length > 0) {
+                            targetUid = authorPosts[0].authorId;
+                            targetUser = {
+                                uid: targetUid,
+                                name: authorPosts[0].authorName,
+                                avatarUrl: authorPosts[0].authorAvatar || `https://ui-avatars.com/api/?name=${authorPosts[0].authorName}&background=2C2C2C&color=F9F8F4`
+                            };
+                            setIsPublicView(true);
+                        }
                     }
+                } else if (currentUser) {
+                    targetUid = currentUser.uid;
+                    targetUser = currentUser;
+                    setIsPublicView(false);
                 } else {
-                    if (currentUser) {
-                        targetUid = currentUser.uid;
-                        targetUser = currentUser;
-                        setIsPublicView(false);
-                    } else {
-                        navigate('/login');
-                        return;
-                    }
+                    navigate('/login');
+                    return;
                 }
 
-                const q = query(
-                    collection(db, "stories"),
-                    where("authorId", "==", targetUid || ""),
-                    where("status", "==", targetUid === currentUser?.uid ? "draft" : "published"), // Dummy for now
-                    orderBy("updatedAt", "desc")
-                );
-
-                // REAL LOGIC:
-                const storiesRef = collection(db, "stories");
-                let finalWritings = [];
-
                 if (targetUid) {
-                    const qReal = query(
+                    const storiesRef = collection(db, "stories");
+                    // Query for stories
+                    const qStories = query(
                         storiesRef,
                         where("authorId", "==", targetUid),
                         orderBy("updatedAt", "desc")
                     );
-                    const snap = await getDocs(qReal);
-                    finalWritings = snap.docs.map(doc => ({
+
+                    const snap = await getDocs(qStories);
+                    const allWritings = snap.docs.map(doc => ({
                         id: doc.id,
                         ...doc.data(),
                         date: doc.data().updatedAt?.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) || 'Just now'
                     }));
+
                     setProfileUser(targetUser);
-                } else if (urlHandle) {
-                    // Try to find stories by this handle (authorName is closest we have)
-                    // Normally you'd query a 'users' collection by handle.
-                    // For now, let's filter the first 50 published stories for a match (TEMPORARY HACK)
-                    const qPublic = query(collection(db, "stories"), where("status", "==", "published"), limit(50));
-                    const snap = await getDocs(qPublic);
-                    const allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-                    // Filter match
-                    const authorPosts = allDocs.filter(d => d.authorEmail?.split('@')[0] === urlHandle || d.authorName?.toLowerCase().replace(/\s/g, '') === urlHandle.toLowerCase());
+                    const filteredWritings = isOwnProfile ? allWritings : allWritings.filter(w => w.status === 'published');
+                    setUserWritings(filteredWritings);
 
-                    if (authorPosts.length > 0) {
-                        finalWritings = authorPosts.map(d => ({
-                            ...d,
-                            date: d.updatedAt?.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) || 'Just now'
-                        }));
-                        setProfileUser({
-                            uid: authorPosts[0].authorId,
-                            name: authorPosts[0].authorName,
-                            avatarUrl: authorPosts[0].authorAvatar || `https://ui-avatars.com/api/?name=${authorPosts[0].authorName}&background=2C2C2C&color=F9F8F4`
-                        });
+                    // Calculate stats
+                    const storiesCount = filteredWritings.filter(w => (w.type?.toLowerCase() === 'story' || !w.type) && w.status === 'published').length;
+                    const poemsCount = filteredWritings.filter(w => w.type?.toLowerCase() === 'poem' && w.status === 'published').length;
+
+                    const newStats = [
+                        { label: 'Stories', value: storiesCount },
+                        { label: 'Poems', value: poemsCount }
+                    ];
+
+                    if (isOwnProfile) {
+                        const draftsCount = allWritings.filter(w => w.status === 'draft').length;
+                        newStats.push({ label: 'Drafts', value: draftsCount });
                     }
+                    setStats(newStats);
+                } else {
+                    setProfileUser(null);
                 }
-
-                setUserWritings(isOwnProfile ? finalWritings : finalWritings.filter(w => w.status === 'published'));
-
-                // Calculate stats
-                const processed = isOwnProfile ? finalWritings : finalWritings.filter(w => w.status === 'published');
-                const storiesCount = processed.filter(w => (w.type?.toLowerCase() === 'story' || !w.type) && w.status === 'published').length;
-                const poemsCount = processed.filter(w => w.type?.toLowerCase() === 'poem' && w.status === 'published').length;
-                const draftsCount = isOwnProfile ? finalWritings.filter(w => w.status === 'draft').length : 0;
-
-                setStats([
-                    { label: 'Stories', value: storiesCount },
-                    { label: 'Poems', value: poemsCount },
-                    ...(isOwnProfile ? [{ label: 'Drafts', value: draftsCount }] : []),
-                ]);
 
             } catch (error) {
                 console.error("Error fetching profile:", error);
@@ -161,18 +144,15 @@ const ProfilePage = () => {
                 updatedAt: serverTimestamp()
             });
 
-            // Update local state
             setUserWritings(prev => prev.map(w =>
                 w.id === writingId ? { ...w, status: 'draft' } : w
             ));
 
-            // Recalculate stats
-            const updatedWritings = userWritings.map(w =>
-                w.id === writingId ? { ...w, status: 'draft' } : w
-            );
-            const storiesCount = updatedWritings.filter(w => (w.type?.toLowerCase() === 'story' || !w.type) && w.status === 'published').length;
-            const poemsCount = updatedWritings.filter(w => w.type?.toLowerCase() === 'poem' && w.status === 'published').length;
-            const draftsCount = updatedWritings.filter(w => w.status === 'draft').length;
+            // Refresh stats locally
+            const updated = userWritings.map(w => w.id === writingId ? { ...w, status: 'draft' } : w);
+            const storiesCount = updated.filter(w => (w.type?.toLowerCase() === 'story' || !w.type) && w.status === 'published').length;
+            const poemsCount = updated.filter(w => w.type?.toLowerCase() === 'poem' && w.status === 'published').length;
+            const draftsCount = updated.filter(w => w.status === 'draft').length;
 
             setStats([
                 { label: 'Stories', value: storiesCount },
@@ -217,8 +197,6 @@ const ProfilePage = () => {
             <NavBar loaded={loaded} />
 
             <main className="max-w-4xl mx-auto px-6 py-32 md:py-48 relative z-10">
-
-                {/* Profile Header */}
                 <header className={`flex flex-col items-center text-center mb-16 ${loaded ? 'animate-ink' : 'opacity-0'}`}>
                     <div className="relative mb-8">
                         <div className="w-28 h-28 rounded-full bg-ink/5 border-2 border-white shadow-xl flex items-center justify-center overflow-hidden group">
@@ -226,7 +204,7 @@ const ProfilePage = () => {
                                 <img src={displayUser.avatarUrl} alt={displayUser.name} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="text-4xl font-serif italic text-ink/40">
-                                    {displayUser?.name?.[0].toUpperCase()}
+                                    {displayUser?.name?.[0]?.toUpperCase()}
                                 </div>
                             )}
                         </div>
@@ -281,7 +259,6 @@ const ProfilePage = () => {
                     </div>
                 </header>
 
-                {/* Writings List */}
                 <section className="space-y-8">
                     <div className={`flex items-center justify-between mb-8 ${loaded ? 'animate-reveal stagger-1' : 'opacity-0'}`}>
                         <h2 className="text-xs uppercase tracking-[0.3em] font-bold text-ink-lighter">{isOwnProfile ? 'Your Library' : 'Writings'}</h2>
@@ -352,12 +329,13 @@ const ProfilePage = () => {
                     ) : (
                         <div className="text-center py-20 border border-dashed border-ink-lighter/10 rounded-2xl">
                             <p className="text-ink-lighter font-serif italic mb-6">Your library is waiting for its first book.</p>
-                            <Link to="/choose-type" className="px-6 py-2 bg-ink text-paper rounded-full text-[10px] uppercase tracking-widest font-bold">Start Writing</Link>
+                            {isOwnProfile && (
+                                <Link to="/choose-type" className="px-6 py-2 bg-ink text-paper rounded-full text-[10px] uppercase tracking-widest font-bold">Start Writing</Link>
+                            )}
                         </div>
                     )}
                 </section>
 
-                {/* Logout Footer */}
                 <footer className={`mt-32 pt-16 border-t border-ink-lighter/10 text-center ${loaded ? 'animate-reveal stagger-3' : 'opacity-0'}`}>
                     <div className="flex flex-col items-center gap-6">
                         {isOwnProfile && (

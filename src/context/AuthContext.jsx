@@ -7,7 +7,8 @@ import {
     signInWithEmailAndPassword,
     updateProfile
 } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { auth, googleProvider, db } from '../firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -28,6 +29,20 @@ export const AuthProvider = ({ children }) => {
                 };
                 setUser(mappedUser);
                 localStorage.setItem('writer_user', JSON.stringify(mappedUser));
+
+                // Sync to Firestore 'users' collection
+                const syncUser = async () => {
+                    try {
+                        await setDoc(doc(db, "users", firebaseUser.uid), {
+                            ...mappedUser,
+                            lastLogin: serverTimestamp(),
+                            handle: firebaseUser.email?.split('@')[0] || 'writer'
+                        }, { merge: true });
+                    } catch (e) {
+                        console.error("Error syncing user:", e);
+                    }
+                };
+                syncUser();
             } else {
                 setUser(null);
                 localStorage.removeItem('writer_user');

@@ -169,6 +169,8 @@ const EditorPage = () => {
                 ),
                 authorId: user.uid,
                 authorName: user.name || 'Anonymous',
+                authorEmail: user.email,
+                authorAvatar: user.avatarUrl,
                 updatedAt: serverTimestamp(),
                 status: 'draft'
             };
@@ -206,6 +208,8 @@ const EditorPage = () => {
                 ),
                 authorId: user.uid,
                 authorName: user.name || 'Anonymous',
+                authorEmail: user.email,
+                authorAvatar: user.avatarUrl,
                 updatedAt: serverTimestamp(),
                 status: 'published',
                 excerpt: editor.getText().substring(0, 150) + '...'
