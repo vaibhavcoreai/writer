@@ -238,12 +238,12 @@ const EditorPage = () => {
                 <NavBar />
             </div>
 
-            <main className="pt-20 md:pt-32 pb-40 px-3 md:px-8 flex justify-center">
+            <main className="pt-36 md:pt-32 pb-40 px-3 md:px-8 flex justify-center">
                 <div
                     className={`max-w-3xl w-full min-h-[85vh] bg-paper shadow-xl rounded-sm p-6 md:p-16 border border-white/40 transition-all duration-700 relative cursor-text ${isDistractionFree ? 'shadow-2xl scale-[1.01]' : 'shadow-xl'}`}
                 >
                     {/* Controls */}
-                    <div className={`flex items-center justify-between mb-8 md:absolute md:top-6 md:right-6 md:mb-0 gap-3 transition-opacity duration-700 ${isDistractionFree ? 'opacity-0 md:hover:opacity-100' : 'opacity-100'}`}>
+                    <div className={`flex items-center justify-end mb-8 md:absolute md:top-6 md:right-6 md:mb-0 gap-3 transition-opacity duration-700 ${isDistractionFree ? 'opacity-0 md:hover:opacity-100' : 'opacity-100'}`}>
                         <button
                             onClick={handleSave}
                             disabled={saveStatus === 'saving'}
