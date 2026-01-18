@@ -76,7 +76,7 @@ const Toolbar = ({ editor, isTyping }) => {
     };
 
     return (
-        <div className={`fixed bottom-6 md:top-24 left-1/2 -translate-x-1/2 z-40 transition-all duration-700 w-[95vw] md:w-auto overflow-x-auto no-scrollbar ${isTyping ? 'opacity-0 pointer-events-none translate-y-4 md:-translate-y-2' : 'opacity-100 translate-y-0'}`}>
+        <div className={`fixed top-20 md:top-24 left-1/2 -translate-x-1/2 z-40 transition-all duration-700 w-[95vw] md:w-auto overflow-x-auto no-scrollbar ${isTyping ? 'opacity-0 pointer-events-none -translate-y-2' : 'opacity-100 translate-y-0'}`}>
             <div className="flex items-center bg-paper shadow-2xl md:shadow-soft border border-ink-lighter/10 rounded-full px-4 py-2 gap-1 relative min-w-max mx-auto">
 
                 {/* Font Dropdown */}
