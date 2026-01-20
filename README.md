@@ -1,4 +1,5 @@
-# Writer - The Quiet Page
+# Writer
+![Writer App Icon](./assets/icon.png)
 
 <p align="center">
   <em>A sanctuary for your thoughts. Distraction-free writing for the modern storyteller.</em>
@@ -31,6 +32,8 @@
 - **Multiple Content Types**: Create stories, poems, blogs, or quick drafts
 - **Auto-Save**: Never lose your work with automatic draft saving
 - **Chapter Management**: Organize longer works with multi-chapter support
+- **Selective Chapter Reading**: Readers can navigate specific chapters with a clean "Table of Contents" interface
+- **Reading Progress Tracking**: (For members) Automatically resumes your story from the last chapter you read
 - **Smart Publishing**: Publish to a public library with one click
 - **Draft Management**: Keep works-in-progress private until ready
 - **Public Profiles**: Shareable author profiles with all published works
@@ -44,8 +47,8 @@
 - **Responsive Design**: Beautiful reading experience on any device
 
 ### Technical Highlights
-- **Firebase Authentication**: Secure Google Sign-In and Email/Password auth
-- **Real-time Database**: Cloud Firestore for instant data sync
+- **Email/Password Authentication**: Secure sign-up/login for writers
+- **Real-time Database**: Cloud Firestore for instant data sync and progress saving
 - **Security-First**: Granular Firestore rules ensure content ownership
 - **SEO Optimized**: Semantic HTML and meta tags for discoverability
 - **Progressive Enhancement**: Works for guests, enhanced for authenticated users
@@ -134,8 +137,8 @@ npm run preview  # Preview the production build locally
 ### 2. Enable Authentication
 
 1. In the Firebase Console, navigate to **Authentication** → **Sign-in method**
-2. Enable **Google** provider
-3. Enable **Email/Password** provider
+2. Enable **Email/Password** provider
+3. Note: **Google Sign-In** is currently not implemented in the application code.
 
 ### 3. Create Firestore Database
 
@@ -158,18 +161,29 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
     
+    // Reading Progress: Only the reader can see and update their own progress
+    match /reading_progress/{progressId} {
+      allow read, write: if request.auth != null && (
+        (request.resource != null && request.auth.uid == request.resource.data.userId) ||
+        (resource != null && request.auth.uid == resource.data.userId)
+      );
+    }
+    
     // Stories: Public can read published, authors can manage their own
     match /stories/{storyId} {
-      // Guests can read published stories, authors can see their drafts
       allow read: if resource.data.status == 'published' || 
                   (request.auth != null && request.auth.uid == resource.data.authorId);
-      
-      // Any authenticated user can create
       allow create: if request.auth != null;
-      
-      // Only the author can update or delete
       allow update, delete: if request.auth != null && 
                             request.auth.uid == resource.data.authorId;
+    }
+
+    // Saves: Authenticated users can manage their own saves
+    match /saves/{saveId} {
+      allow read, write: if request.auth != null && (
+        (request.resource != null && request.auth.uid == request.resource.data.userId) ||
+        (resource != null && request.auth.uid == resource.data.userId)
+      );
     }
   }
 }
@@ -253,7 +267,7 @@ Writer follows a minimalist design philosophy inspired by classic typography and
 
 ### Writing Your First Story
 
-1. **Sign Up/Login** using Google or Email
+1. **Sign Up/Login** using Email/Password (*Google Sign-In is not currently available*)
 2. Click **"Start Writing"** or navigate to **Write** in the menu
 3. Choose a content type (Story, Poem, Blog, or Draft)
 4. Start writing in the distraction-free editor
