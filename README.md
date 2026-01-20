@@ -6,6 +6,11 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Source-Open-blue?style=for-the-badge" alt="Source Open">
+  <img src="https://img.shields.io/badge/SaaS-Restricted-red?style=for-the-badge" alt="SaaS Restricted">
+</p>
+
+<p align="center">
   <a href="#features">Features</a> •
   <a href="#tech-stack">Tech Stack</a> •
   <a href="#getting-started">Getting Started</a> •
@@ -341,7 +346,15 @@ Contributions are always welcome! Here's how you can help:
 
 ## 📄 License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is **Source Open**. While the source code is public, it is **not** licensed under a traditional permissive open-source license like MIT. 
+
+It is available under a **Custom Source-Available License** (see [LICENSE](LICENSE)) which:
+- ✅ Allows personal, non-commercial use.
+- ✅ Encourages community contributions and learning.
+- ❌ **Prohibits** hosting a competing SaaS or managed service.
+- ❌ **Prohibits** commercial redistribution of the core app logic.
+
+For commercial licensing inquiries, please contact the author.
 
 ---
 

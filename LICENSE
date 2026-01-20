@@ -1,0 +1,29 @@
+Writer Source-Available License
+
+Copyright (c) 2026 Vaibhav Manaji
+
+This license applies to the "Writer" application source code, documentation, and associated assets (the "Software").
+
+1. SOURCE OPEN ACCESS
+The Software is "Source Open," meaning the source code is publicly accessible for review, educational purposes, and community contribution.
+
+2. ALLOWED USE
+You are permitted to:
+- Download, view, and study the source code.
+- Modify the code for personal, non-commercial use.
+- Submit Pull Requests and contributions to the official repository.
+
+3. RESTRICTIONS & SAAS LIMITATIONS
+To protect the integrity of the project and its commercial viability, the following restrictions apply:
+- **No SaaS Competition**: You may not use the Software or any portion of its code to host, provide, or sell a managed service, Software-as-a-Service (SaaS), or any platform that competes with the official "Writer" application (currently at forwriters.vercel.app).
+- **No Commercial Redistribution**: You may not sell, rent, or lease the Software or modified versions of it as a standalone product.
+- **App Logic Protection**: The core application logic, distraction-free editor configurations, and proprietary "Focus Mode" mechanics are protected. Unauthorized extraction or reuse of these logic patterns for commercial purposes is prohibited.
+
+4. CONTRIBUTIONS
+By contributing to this repository, you agree that your contributions will be licensed under these same terms.
+
+5. TERMINATION
+Any use of the Software not specifically permitted by this license or without written consent from the author terminates your rights under this license immediately.
+
+6. DISCLAIMER
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
