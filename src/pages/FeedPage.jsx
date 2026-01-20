@@ -99,9 +99,9 @@ const FeedPage = () => {
                 // Unsave: find the doc and delete it
                 const q = query(collection(db, "saves"), where("userId", "==", currentUser.uid), where("storyId", "==", storyId));
                 const snap = await getDocs(q);
-                snap.forEach(async (saveDoc) => {
+                for (const saveDoc of snap.docs) {
                     await deleteDoc(doc(db, "saves", saveDoc.id));
-                });
+                }
                 setUserSaves(prev => {
                     const next = new Set(prev);
                     next.delete(storyId);

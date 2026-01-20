@@ -80,9 +80,9 @@ const ReadPage = () => {
             if (isSaved) {
                 const q = query(collection(db, "saves"), where("userId", "==", user.uid), where("storyId", "==", id));
                 const snap = await getDocs(q);
-                snap.forEach(async (saveDoc) => {
+                for (const saveDoc of snap.docs) {
                     await deleteDoc(doc(db, "saves", saveDoc.id));
-                });
+                }
                 setIsSaved(false);
             } else {
                 await addDoc(collection(db, "saves"), {
