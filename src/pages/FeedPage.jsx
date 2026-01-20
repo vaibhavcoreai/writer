@@ -8,17 +8,23 @@ import {
     query,
     where,
     getDocs,
-    orderBy
+    orderBy,
+    addDoc,
+    deleteDoc,
+    doc,
+    serverTimestamp
 } from 'firebase/firestore';
 
 const FeedPage = () => {
     const navigate = useNavigate();
-    const { loading: authLoading } = useAuth();
+    const { user: currentUser, loading: authLoading } = useAuth();
     const [loaded, setLoaded] = useState(false);
     const [activeTab, setActiveTab] = useState('All');
     const [publicFeed, setPublicFeed] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [userSaves, setUserSaves] = useState(new Set());
+    const [savingIds, setSavingIds] = useState(new Set());
 
     useEffect(() => {
         const fetchFeed = async () => {
@@ -54,6 +60,15 @@ const FeedPage = () => {
 
                 // Limit to 50 for performance
                 setPublicFeed(fetchedStories.slice(0, 50));
+
+                // Fetch user saves if logged in
+                if (authLoading === false && currentUser) {
+                    const savesRef = collection(db, "saves");
+                    const qSaves = query(savesRef, where("userId", "==", currentUser.uid));
+                    const savesSnap = await getDocs(qSaves);
+                    const savesSet = new Set(savesSnap.docs.map(doc => doc.data().storyId));
+                    setUserSaves(savesSet);
+                }
             } catch (error) {
                 console.error("Error fetching feed:", error);
             } finally {
@@ -63,7 +78,61 @@ const FeedPage = () => {
         };
 
         fetchFeed();
-    }, [authLoading]);
+    }, [authLoading, currentUser]);
+
+    const handleToggleSave = async (e, post) => {
+        e.stopPropagation();
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+
+        const isSaved = userSaves.has(post.id);
+        const storyId = post.id;
+
+        // Prevent multiple clicks
+        if (savingIds.has(storyId)) return;
+        setSavingIds(prev => new Set(prev).add(storyId));
+
+        try {
+            if (isSaved) {
+                // Unsave: find the doc and delete it
+                const q = query(collection(db, "saves"), where("userId", "==", currentUser.uid), where("storyId", "==", storyId));
+                const snap = await getDocs(q);
+                snap.forEach(async (saveDoc) => {
+                    await deleteDoc(doc(db, "saves", saveDoc.id));
+                });
+                setUserSaves(prev => {
+                    const next = new Set(prev);
+                    next.delete(storyId);
+                    return next;
+                });
+            } else {
+                // Save
+                await addDoc(collection(db, "saves"), {
+                    userId: currentUser.uid,
+                    storyId: storyId,
+                    savedAt: serverTimestamp(),
+                    // Cache some preview data for easier fetching in profile
+                    title: post.title,
+                    type: post.type || 'story',
+                    authorName: post.authorName,
+                    authorHandle: post.authorHandle,
+                    excerpt: post.excerpt,
+                    updatedAt: post.updatedAt
+                });
+                setUserSaves(prev => new Set(prev).add(storyId));
+            }
+        } catch (err) {
+            console.error("Save Error:", err);
+        } finally {
+            setSavingIds(prev => {
+                const next = new Set(prev);
+                next.delete(storyId);
+                return next;
+            });
+        }
+    };
 
     const filteredFeed = publicFeed.filter(post => {
         const matchesTab = activeTab === 'All' || post.type?.toLowerCase() === activeTab.toLowerCase();
@@ -141,13 +210,42 @@ const FeedPage = () => {
                                 <div>
                                     <div className="flex items-center gap-4 mb-6">
                                         <span className="text-[10px] uppercase tracking-widest font-bold text-ink-lighter bg-paper/50 px-3 py-1 rounded-full border border-ink-lighter/5">
-                                            {post.type || 'Story'}
+                                            {post.type ? (post.type.charAt(0).toUpperCase() + post.type.slice(1)) : 'Story'}
                                         </span>
                                         <span className="text-ink-lighter font-serif italic text-xs">{post.readTime}</span>
                                     </div>
-                                    <h3 className="text-3xl font-serif font-bold text-ink mb-4 group-hover:tracking-tight transition-all duration-300">
-                                        {post.title}
-                                    </h3>
+                                    <div className="flex justify-between items-start gap-4">
+                                        <h3 className="text-3xl font-serif font-bold text-ink mb-4 group-hover:tracking-tight transition-all duration-300">
+                                            {post.title}
+                                        </h3>
+                                        {currentUser && (
+                                            <div className="flex items-center gap-3">
+                                                {userSaves.has(post.id) && (
+                                                    <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-ink/40 animate-ink">Already Saved</span>
+                                                )}
+                                                <button
+                                                    onClick={(e) => handleToggleSave(e, post)}
+                                                    className={`p-2.5 rounded-full transition-all duration-500 ${userSaves.has(post.id) ? 'bg-ink text-paper scale-110 shadow-lg' : 'bg-paper/50 text-ink-lighter hover:text-ink hover:bg-white border border-ink-lighter/10'}`}
+                                                    disabled={savingIds.has(post.id)}
+                                                >
+                                                    {savingIds.has(post.id) ? (
+                                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                                                    ) : (
+                                                        <div className="relative">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill={userSaves.has(post.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                                            </svg>
+                                                            {userSaves.has(post.id) && (
+                                                                <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-0.5 shadow-sm">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                     <p className="text-ink-light font-serif italic line-clamp-3 leading-relaxed">
                                         {post.excerpt}
                                     </p>

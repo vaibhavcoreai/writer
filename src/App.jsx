@@ -82,6 +82,47 @@ function LandingPage() {
 
 
 
+import { App as CapacitorApp } from '@capacitor/app';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleBackButton = async ({ canGoBack }) => {
+      if (location.pathname === '/' || location.pathname === '/login') {
+        CapacitorApp.exitApp();
+      } else {
+        navigate(-1);
+      }
+    };
+
+    const navListener = CapacitorApp.addListener('backButton', handleBackButton);
+    return () => {
+      navListener.then(listener => listener.remove());
+    };
+  }, [location, navigate]);
+
+  return (
+    <PageLayout>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<AuthPage />} />
+        <Route path="/signup" element={<AuthPage />} />
+        <Route path="/choose-type" element={<WritingTypePage />} />
+        <Route path="/drafts" element={<DraftsPage />} />
+        <Route path="/read" element={<FeedPage />} />
+        <Route path="/read/:id" element={<ReadPage />} />
+        <Route path="/write" element={<EditorPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/:handle" element={<ProfilePage />} />
+      </Routes>
+    </PageLayout>
+  );
+}
+
 function App() {
   const [initialLoading, setInitialLoading] = useState(true);
 
@@ -93,21 +134,7 @@ function App() {
           {initialLoading && <LoadingScreen onComplete={() => setInitialLoading(false)} />}
           <BrowserRouter>
             <AnalyticsTracker />
-            <PageLayout>
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<AuthPage />} />
-                <Route path="/signup" element={<AuthPage />} />
-                <Route path="/choose-type" element={<WritingTypePage />} />
-                <Route path="/drafts" element={<DraftsPage />} />
-                <Route path="/read" element={<FeedPage />} />
-                <Route path="/read/:id" element={<ReadPage />} />
-                <Route path="/write" element={<EditorPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/:handle" element={<ProfilePage />} />
-              </Routes>
-            </PageLayout>
+            <AppContent />
           </BrowserRouter>
         </ErrorBoundary>
       </UIProvider>

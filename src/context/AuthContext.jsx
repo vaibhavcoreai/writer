@@ -1,12 +1,16 @@
 import { createContext, useState, useContext, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import {
     signInWithPopup,
     signOut,
     onAuthStateChanged,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
-    updateProfile
+    updateProfile,
+    signInWithCredential, // Added for Native Auth
+    GoogleAuthProvider // Added for Native Auth
 } from 'firebase/auth';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication'; // Native Plugin
 import { auth, googleProvider, db } from '../firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -53,8 +57,18 @@ export const AuthProvider = ({ children }) => {
         return () => unsubscribe();
     }, []);
 
+
+
     const signInWithGoogle = async () => {
         try {
+            // Check platform reliably
+            // Mobile: Temporarily disable Google Sign In
+            if (Capacitor.isNativePlatform()) {
+                alert("Google Sign-In is currently only available on the web version. Please sign up with Email/Password.");
+                return;
+            }
+
+            // Web: Continue as normal
             await signInWithPopup(auth, googleProvider);
         } catch (error) {
             console.error("Error signing in with Google:", error);

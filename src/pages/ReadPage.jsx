@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 
 const ReadPage = () => {
     const { id } = useParams();
@@ -12,6 +12,8 @@ const ReadPage = () => {
     const [story, setStory] = useState(null);
     const [loading, setLoading] = useState(true);
     const [loaded, setLoaded] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     const unpublishStory = async () => {
         if (!user || user.uid !== story.authorId) {
@@ -65,6 +67,44 @@ const ReadPage = () => {
         }
     };
 
+    const toggleSave = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+
+        if (saving) return;
+        setSaving(true);
+
+        try {
+            if (isSaved) {
+                const q = query(collection(db, "saves"), where("userId", "==", user.uid), where("storyId", "==", id));
+                const snap = await getDocs(q);
+                snap.forEach(async (saveDoc) => {
+                    await deleteDoc(doc(db, "saves", saveDoc.id));
+                });
+                setIsSaved(false);
+            } else {
+                await addDoc(collection(db, "saves"), {
+                    userId: user.uid,
+                    storyId: id,
+                    savedAt: serverTimestamp(),
+                    title: story.title,
+                    type: story.type || 'story',
+                    authorName: story.authorName,
+                    authorHandle: story.authorHandle,
+                    excerpt: story.excerpt || '',
+                    updatedAt: story.updatedAt
+                });
+                setIsSaved(true);
+            }
+        } catch (err) {
+            console.error("Save Error:", err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     useEffect(() => {
         const fetchStory = async () => {
             if (authLoading) return;
@@ -87,8 +127,17 @@ const ReadPage = () => {
             }
         };
 
+        const checkSaveStatus = async () => {
+            if (user) {
+                const q = query(collection(db, "saves"), where("userId", "==", user.uid), where("storyId", "==", id));
+                const snap = await getDocs(q);
+                setIsSaved(!snap.empty);
+            }
+        };
+
         fetchStory();
-    }, [id, navigate, authLoading]);
+        checkSaveStatus();
+    }, [id, navigate, authLoading, user]);
 
     if (loading) {
         return (
@@ -132,10 +181,10 @@ const ReadPage = () => {
                             {user && user.uid === story.authorId && (
                                 <div className="flex gap-4 mt-4">
                                     <button
-                                        onClick={() => navigate(`/write?id=${id}`)}
+                                        onClick={() => navigate(`/write?id=${id}&type=${story.type || 'story'}`)}
                                         className="text-[10px] uppercase tracking-widest font-bold text-ink-light px-4 py-2 rounded-full border border-ink-lighter/20 hover:bg-black/5"
                                     >
-                                        Edit Story
+                                        Edit {story.type ? (story.type.charAt(0).toUpperCase() + story.type.slice(1)) : 'Story'}
                                     </button>
                                     <button
                                         onClick={unpublishStory}
@@ -169,32 +218,80 @@ const ReadPage = () => {
                     {/* Footer */}
                     <footer className="mt-32 pt-16 border-t border-ink-lighter/10 flex flex-col items-center">
                         {/* Like Button */}
-                        <div className="flex flex-col items-center gap-4 mb-20">
-                            <button
-                                onClick={toggleLike}
-                                className={`group flex flex-col items-center justify-center p-6 rounded-full transition-all duration-500 hover:scale-110 active:scale-90
-                                    ${story.likes?.includes(user?.uid)
-                                        ? 'bg-ink text-paper shadow-2xl'
-                                        : 'bg-paper-dark/50 text-ink hover:bg-white border border-ink/5'}
-                                `}
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="28"
-                                    height="28"
-                                    viewBox="0 0 24 24"
-                                    fill={story.likes?.includes(user?.uid) ? "currentColor" : "none"}
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="transition-all group-hover:rotate-12"
+                        <div className="flex gap-8 mb-20">
+                            {/* Like Button */}
+                            <div className="flex flex-col items-center gap-4">
+                                <button
+                                    onClick={toggleLike}
+                                    className={`group flex flex-col items-center justify-center p-6 rounded-full transition-all duration-500 hover:scale-110 active:scale-90
+                                        ${story.likes?.includes(user?.uid)
+                                            ? 'bg-ink text-paper shadow-2xl'
+                                            : 'bg-paper-dark/50 text-ink hover:bg-white border border-ink/5'}
+                                    `}
                                 >
-                                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
-                                </svg>
-                                <span className="mt-2 text-xs font-bold uppercase tracking-widest">{story.likesCount || 0}</span>
-                            </button>
-                            <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-ink-lighter">{story.likes?.includes(user?.uid) ? "Grateful for your heart" : "Give this story a heart"}</span>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="28"
+                                        height="28"
+                                        viewBox="0 0 24 24"
+                                        fill={story.likes?.includes(user?.uid) ? "currentColor" : "none"}
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="transition-all group-hover:rotate-12"
+                                    >
+                                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                                    </svg>
+                                    <span className="mt-2 text-xs font-bold uppercase tracking-widest">{story.likesCount || 0}</span>
+                                </button>
+                                <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-ink-lighter">{story.likes?.includes(user?.uid) ? "Liked" : "Like"}</span>
+                            </div>
+
+                            {/* Bookmark Button - Hidden for guests */}
+                            {user && (
+                                <div className="flex flex-col items-center gap-4">
+                                    <button
+                                        onClick={toggleSave}
+                                        className={`group flex flex-col items-center justify-center p-6 rounded-full transition-all duration-500 hover:scale-110 active:scale-90
+                                            ${isSaved
+                                                ? 'bg-ink text-paper shadow-2xl'
+                                                : 'bg-paper-dark/50 text-ink hover:bg-white border border-ink/5'}
+                                        `}
+                                        disabled={saving}
+                                    >
+                                        {saving ? (
+                                            <div className="w-7 h-7 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                                        ) : (
+                                            <div className="relative">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="28"
+                                                    height="28"
+                                                    viewBox="0 0 24 24"
+                                                    fill={isSaved ? "currentColor" : "none"}
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    className="transition-all group-hover:-translate-y-1"
+                                                >
+                                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                                </svg>
+                                                {isSaved && (
+                                                    <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-1 shadow-md border border-white">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        <span className="mt-2 text-[10px] font-bold uppercase tracking-widest">{isSaved ? "Saved" : "Save"}</span>
+                                    </button>
+                                    <span className={`text-[10px] uppercase tracking-[0.3em] font-bold ${isSaved ? "text-green-600/70" : "text-ink-lighter"}`}>
+                                        {isSaved ? "Already in Library" : "Bookmark Post"}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         <div className="text-center mb-12">

@@ -113,7 +113,7 @@ const DraftsPage = () => {
                         drafts.map((draft, index) => (
                             <div
                                 key={draft.id}
-                                onClick={() => navigate(`/write?id=${draft.id}`)}
+                                onClick={() => navigate(`/write?id=${draft.id}&type=${draft.type || 'story'}`)}
                                 className={`group flex flex-col md:flex-row md:items-center justify-between p-6 md:px-8 bg-paper border border-white/40 rounded-xl shadow-soft hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer 
                                     ${loaded ? 'animate-reveal' : 'opacity-0'}
                                 `}
@@ -126,7 +126,7 @@ const DraftsPage = () => {
                                     <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-ink-lighter font-bold">
                                         <span>Last edited: {draft.date}</span>
                                         <span className="opacity-30">•</span>
-                                        <span>{draft.chapters?.length || 1} Chapters</span>
+                                        <span>{draft.type || 'story'}</span>
                                     </div>
                                 </div>
 
@@ -139,7 +139,7 @@ const DraftsPage = () => {
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                                     </button>
                                     <button className="text-[10px] uppercase tracking-[0.2em] font-bold text-ink-lighter group-hover:text-ink transition-colors flex items-center gap-2">
-                                        <span>Open Notebook</span>
+                                        <span>Open {draft.type || 'Notebook'}</span>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
                                     </button>
                                 </div>

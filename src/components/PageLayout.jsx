@@ -1,30 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 
 const PageLayout = ({ children }) => {
+    const isNative = Capacitor.isNativePlatform();
     const location = useLocation();
     const [displayLocation, setDisplayLocation] = useState(location);
     const [transitionStage, setTransitionStage] = useState('idle'); // idle, cover, reveal
+    const [frozenChildren, setFrozenChildren] = useState(children);
+    const prevChildrenRef = useRef(children);
+
+    // Keep track of the "incoming" children but don't show them yet
+    useEffect(() => {
+        prevChildrenRef.current = children;
+    }, [children]);
 
     useEffect(() => {
+        if (isNative) return; // Disable for Android/iOS
+
         if (location.pathname !== displayLocation.pathname || location.search !== displayLocation.search) {
             setTransitionStage('cover');
         }
-    }, [location, displayLocation]);
+    }, [location, displayLocation, isNative]);
 
     const handleTransitionEnd = () => {
         if (transitionStage === 'cover') {
-            // Screen is fully covered. Add a deliberate pause for the "breath".
+            // Screen is fully covered.
             setTimeout(() => {
                 setDisplayLocation(location);
+                setFrozenChildren(prevChildrenRef.current);
                 setTransitionStage('reveal');
-                // Scroll to top when switching pages
                 window.scrollTo(0, 0);
-            }, 600);
+            }, 300); // Shorter pause for better feel
         } else if (transitionStage === 'reveal') {
             setTransitionStage('idle');
         }
     };
+
+    if (isNative) {
+        return <div className="min-h-screen">{children}</div>;
+    }
 
     return (
         <div className="relative min-h-screen">
@@ -38,12 +53,8 @@ const PageLayout = ({ children }) => {
                 </div>
             )}
 
-            {/* 
-                We keep the content of the PREVIOUS page visible while the panel is sliding to cover it.
-                We only show the NEW page content after the displayLocation has updated and we are in reveal/idle.
-            */}
-            <div className={`transition-all duration-1000 ${transitionStage === 'cover' ? 'opacity-0 scale-[0.98]' : 'opacity-100 scale-100'}`}>
-                {children}
+            <div className={`transition-all duration-700 ${transitionStage === 'cover' ? 'opacity-0 scale-[0.98]' : 'opacity-100 scale-100'}`}>
+                {frozenChildren}
             </div>
         </div>
     );

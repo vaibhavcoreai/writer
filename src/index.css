@@ -1,6 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Roboto+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Quicksand:wght@300;400;500&display=swap');
 @import "tailwindcss";
-@config "../tailwind.config.js";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-paper: var(--color-paper);
+  --color-paper-dark: var(--color-paper-dark);
+  --color-ink: var(--color-ink);
+  --color-ink-light: var(--color-ink-light);
+  --color-ink-lighter: var(--color-ink-lighter);
+
+  --color-warm-100: #f5f5f1;
+  --color-warm-200: #ebebe6;
+  --color-warm-300: #d4d9d2;
+
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Inter", sans-serif;
+
+  --shadow-soft: 0 4px 20px -2px rgba(44, 44, 44, 0.08);
+  --shadow-inner-soft: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}
 
 @layer base {
   :root {
@@ -91,75 +112,52 @@
 @keyframes revealSlow {
   0% {
     opacity: 0;
-    transform: translateY(20px);
-    filter: blur(10px);
+    transform: translateY(15px);
   }
 
   100% {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 
 @keyframes inkReveal {
   0% {
     opacity: 0;
-    filter: blur(15px);
-    letter-spacing: 0.15em;
-    transform: scale(1.02);
+    letter-spacing: 0.1em;
+    transform: scale(1.01);
   }
 
   100% {
     opacity: 1;
-    filter: blur(0);
     letter-spacing: normal;
     transform: scale(1);
   }
 }
 
-@keyframes sunriseDiagonal {
+@keyframes themeReveal {
   0% {
-    clip-path: circle(0% at 0% 100%);
-    background: linear-gradient(45deg, #fceabb 0%, #f8b500 100%);
+    transform: scale(0);
+    opacity: 1;
   }
 
-  60% {
-    clip-path: circle(150% at 0% 100%);
-    background: linear-gradient(45deg, #F9F8F4 0%, #F0EFE9 100%);
+  70% {
+    transform: scale(1.5);
     opacity: 1;
   }
 
   100% {
-    clip-path: circle(150% at 0% 100%);
-    opacity: 0;
-  }
-}
-
-@keyframes sunsetDiagonal {
-  0% {
-    clip-path: circle(0% at 0% 100%);
-    background: linear-gradient(45deg, #100b32 0%, #000000 100%);
-  }
-
-  60% {
-    clip-path: circle(150% at 0% 100%);
-    background: linear-gradient(45deg, #1A1A17 0%, #242421 100%);
-    opacity: 1;
-  }
-
-  100% {
-    clip-path: circle(150% at 0% 100%);
+    transform: scale(1.5);
     opacity: 0;
   }
 }
 
 .animate-ink {
-  animation: inkReveal 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: inkReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-reveal {
-  animation: revealSlow 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: revealSlow 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .stagger-1 {
@@ -182,20 +180,85 @@
   animation-delay: 0.5s;
 }
 
-.theme-transition-sunrise {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  animation: sunriseDiagonal 1.2s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+@keyframes themeFade {
+  0% {
+    opacity: 0;
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
+.theme-transition-sunrise,
 .theme-transition-sunset {
   position: fixed;
-  inset: 0;
   z-index: 9999;
   pointer-events: none;
-  animation: sunsetDiagonal 1.2s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+/* Web Version: High-Performance scale animation from bottom-left corner */
+.theme-transition-sunrise.is-web,
+.theme-transition-sunset.is-web {
+  position: fixed;
+  bottom: -150px;
+  left: -150px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  transform-origin: center center;
+  will-change: transform, opacity;
+  z-index: 9999;
+  animation: themeScaleUp 1.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* We use a massive scale to cover everything from the corner */
+@keyframes themeScaleUp {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+
+  80% {
+    transform: scale(20);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(20);
+    opacity: 0;
+  }
+}
+
+.theme-transition-sunrise.is-web {
+  background-color: #f7e28d;
+}
+
+.theme-transition-sunset.is-web {
+  background-color: #1a154d;
+}
+
+/* Native Version: Fast Fade */
+.theme-transition-sunrise.is-native,
+.theme-transition-sunset.is-native {
+  inset: 0;
+  animation: themeFade 1.2s ease-in-out forwards;
+}
+
+.theme-transition-sunrise.is-native {
+  background-color: var(--color-paper);
+}
+
+.theme-transition-sunset.is-native {
+  background-color: var(--color-paper-dark);
 }
 
 .page-transition-panel {

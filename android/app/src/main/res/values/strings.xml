@@ -4,4 +4,6 @@
     <string name="title_activity_main">The Quiet Page</string>
     <string name="package_name">com.writer.app</string>
     <string name="custom_url_scheme">com.writer.app</string>
+    <string name="server_client_id">735883548830-gckuv814p6ahcvrosovlpch0g2u5tkd4.apps.googleusercontent.com</string>
+    <string name="default_web_client_id">735883548830-gckuv814p6ahcvrosovlpch0g2u5tkd4.apps.googleusercontent.com</string>
 </resources>

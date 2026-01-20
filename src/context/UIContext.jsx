@@ -1,8 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 const UIContext = createContext();
 
 export const UIProvider = ({ children }) => {
+    const isNative = Capacitor.isNativePlatform();
     const [darkMode, setDarkMode] = useState(() => {
         const saved = localStorage.getItem('darkMode');
         return saved ? JSON.parse(saved) : false;
@@ -29,10 +31,10 @@ export const UIProvider = ({ children }) => {
             setDarkMode(willBeDark);
         }, 500);
 
-        // Clear animation faster (1.2s instead of 3s)
+        // Clear animation
         setTimeout(() => {
             setThemeAnimation(null);
-        }, 1200);
+        }, isNative ? 1200 : 2000); // Web animation is now 1.6s
     };
 
     const toggleFocusMode = () => setFocusMode(!focusMode);
@@ -48,8 +50,8 @@ export const UIProvider = ({ children }) => {
         }}>
             {children}
             {themeAnimation && (
-                <div className={`theme-transition-${themeAnimation}`}>
-                    <div className="paper-grain"></div>
+                <div className={`theme-transition-${themeAnimation} ${isNative ? 'is-native' : 'is-web'}`}>
+                    {!isNative && <div className="paper-grain"></div>}
                 </div>
             )}
         </UIContext.Provider>

@@ -26,11 +26,12 @@ const EditorPage = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const docId = searchParams.get('id');
+    const type = searchParams.get('type') || 'story';
 
     const [title, setTitle] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [chapters, setChapters] = useState([
-        { id: '1', title: 'Chapter 1', subtitle: 'The Beginning', content: '' }
+        { id: '1', title: type === 'story' ? 'Chapter 1' : 'Content', subtitle: type === 'story' ? 'The Beginning' : '', content: '' }
     ]);
     const [activeChapterIndex, setActiveChapterIndex] = useState(0);
     const [showChapters, setShowChapters] = useState(false);
@@ -44,7 +45,7 @@ const EditorPage = () => {
     const editor = useEditor({
         extensions: [
             StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-            Placeholder.configure({ placeholder: 'Start writing your story...' }),
+            Placeholder.configure({ placeholder: `Start writing your ${type}...` }),
             TextStyle,
             FontFamily,
             FontSize,
@@ -315,28 +316,32 @@ const EditorPage = () => {
                                 e.target.style.height = 'auto';
                                 e.target.style.height = e.target.scrollHeight + 'px';
                             }}
-                            placeholder="Untitled Story"
+                            placeholder={`Untitled ${type.charAt(0).toUpperCase() + type.slice(1)}`}
                             className="w-full text-4xl md:text-6xl font-bold font-serif bg-transparent border-none outline-none placeholder:text-ink-lighter/30 resize-none overflow-hidden leading-tight"
                             rows={1}
                         />
 
                         <div className="flex items-center gap-4 relative">
-                            <input
-                                ref={subtitleRef}
-                                type="text"
-                                value={activeChapter.subtitle}
-                                onChange={(e) => updateChapter({ subtitle: e.target.value })}
-                                placeholder="Chapter Subtitle"
-                                className="flex-1 text-xl font-serif italic text-ink-light bg-transparent border-none outline-none placeholder:text-ink-lighter/30"
-                            />
+                            {type === 'story' && (
+                                <>
+                                    <input
+                                        ref={subtitleRef}
+                                        type="text"
+                                        value={activeChapter.subtitle}
+                                        onChange={(e) => updateChapter({ subtitle: e.target.value })}
+                                        placeholder="Chapter Subtitle"
+                                        className="flex-1 text-xl font-serif italic text-ink-light bg-transparent border-none outline-none placeholder:text-ink-lighter/30"
+                                    />
 
-                            <button
-                                onClick={() => setShowChapters(!showChapters)}
-                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-ink-lighter/10 text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-ink-lighter transition-all ${isDistractionFree ? 'opacity-0' : 'opacity-100'}`}
-                            >
-                                <span className="max-w-[80px] truncate">{activeChapter.title}</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
-                            </button>
+                                    <button
+                                        onClick={() => setShowChapters(!showChapters)}
+                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-ink-lighter/10 text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-ink-lighter transition-all ${isDistractionFree ? 'opacity-0' : 'opacity-100'}`}
+                                    >
+                                        <span className="max-w-[80px] truncate">{activeChapter.title}</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+                                    </button>
+                                </>
+                            )}
 
                             {showChapters && (
                                 <div className="absolute top-full right-0 mt-4 w-64 bg-paper border border-ink-lighter/10 shadow-xl rounded-2xl p-4 z-50 animate-fade-in origin-top-right">
