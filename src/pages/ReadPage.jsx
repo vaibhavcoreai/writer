@@ -283,7 +283,7 @@ const ReadPage = () => {
                                 onClick={() => handleChapterChange(currentChapterIndex + 1)}
                                 className="p-3 rounded-full hover:bg-black/5 text-ink-lighter hover:text-ink disabled:opacity-20 disabled:hover:bg-transparent transition-all"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6 6-6" transform="rotate(180 12 12)"></path></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6"></path></svg>
                             </button>
                         </div>
                     </div>
