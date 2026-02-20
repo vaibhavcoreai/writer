@@ -11,9 +11,9 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID || "placeholder"
 };
 
-// Log warning if keys are missing
+// Check for missing keys
 if (!import.meta.env.VITE_FIREBASE_API_KEY) {
-    console.warn("Firebase API Key is missing. Please create a .env file and add your VITE_FIREBASE_API_KEY.");
+    console.error("CRITICAL ERROR: Firebase API Key is missing. Follow these steps:\n1. Create a '.env' file in the root directory.\n2. Add 'VITE_FIREBASE_API_KEY=your_key_here'\n3. Restart your development server.");
 }
 
 // Initialize Firebase
@@ -23,5 +23,6 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export default app;
